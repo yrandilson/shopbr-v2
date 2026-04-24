@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShopBR v2 · MLOps Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:       #06080f;
+  --surface:  #0c1018;
+  --surface2: #111722;
+  --border:   #1a2235;
+  --border2:  #243045;
+  --accent:   #3b82f6;
+  --green:    #22d3a5;
+  --red:      #f43f5e;
+  --yellow:   #f59e0b;
+  --purple:   #a78bfa;
+  --cyan:     #22d3ee;
+  --text:     #e2e8f0;
+  --muted:    #4b6080;
+  --mono:     'JetBrains Mono', monospace;
+  --body:     'Inter', sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:14px;min-height:100vh;}
+
+/* HEADER */
+header{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:200;
+}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-badge{
+  background:var(--accent);color:#fff;font-family:var(--mono);font-size:11px;font-weight:700;
+  padding:4px 8px;border-radius:4px;letter-spacing:.04em;
+}
+.logo-name{font-family:var(--mono);font-size:13px;color:var(--text);letter-spacing:.04em;}
+.logo-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+.header-right{display:flex;align-items:center;gap:12px;}
+.pill-status{
+  font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:12px;
+  background:rgba(34,211,165,.1);color:var(--green);border:1px solid rgba(34,211,165,.2);
+  display:flex;align-items:center;gap:6px;
+}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* TABS */
+.tabs-bar{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 28px;display:flex;gap:4px;
+}
+.tab{
+  font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--muted);padding:14px 16px;cursor:pointer;border-bottom:2px solid transparent;
+  transition:all .15s;user-select:none;
+}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* MAIN */
+main{padding:24px 28px;max-width:1600px;margin:0 auto;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px;}
+@media(max-width:1200px){.kpi-grid{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:700px) {.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+
+.kpi{
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:14px 16px;position:relative;overflow:hidden;transition:border-color .2s;
+}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kc,var(--accent));}
+.kpi:hover{border-color:var(--kc,var(--accent));}
+.kpi-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px;}
+.kpi-val{font-family:var(--mono);font-size:24px;font-weight:700;color:var(--text);line-height:1;}
+.kpi-unit{font-family:var(--mono);font-size:11px;color:var(--kc,var(--accent));margin-top:3px;}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;}
+.card-title{
+  font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--muted);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;
+}
+.card-title span{color:var(--text);font-size:13px;text-transform:none;letter-spacing:0;font-family:var(--body);font-weight:500;}
+
+/* GRIDS */
+.grid-2-1{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+@media(max-width:1100px){.grid-2-1,.grid-3,.grid-2{grid-template-columns:1fr;}}
+
+.chart-h{position:relative;height:250px;}
+.chart-h-sm{position:relative;height:210px;}
+
+/* LEGEND */
+.legend{display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap;}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);}
+.leg-dot{width:10px;height:4px;border-radius:2px;}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead tr{border-bottom:1px solid var(--border);}
+thead th{text-align:left;padding:8px 10px;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:400;}
+tbody tr{border-bottom:1px solid rgba(26,34,53,.6);transition:background .15s;}
+tbody tr:hover{background:rgba(59,130,246,.04);}
+tbody tr:last-child{border-bottom:none;}
+tbody td{padding:9px 10px;}
+
+/* BADGE */
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-family:var(--mono);font-size:11px;}
+.badge-green{background:rgba(34,211,165,.1);color:var(--green);}
+.badge-red  {background:rgba(244,63,94,.1); color:var(--red);}
+.badge-yellow{background:rgba(245,158,11,.1);color:var(--yellow);}
+.badge-blue {background:rgba(59,130,246,.1);color:var(--accent);}
+.badge-purple{background:rgba(167,139,250,.1);color:var(--purple);}
+
+/* FILTER BAR */
+.filter-bar{
+  display:flex;align-items:center;gap:12px;margin-bottom:18px;
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;
+  flex-wrap:wrap;
+}
+.filter-bar label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+select,button.btn{
+  background:var(--bg);border:1px solid var(--border);color:var(--text);
+  padding:5px 10px;border-radius:4px;font-family:var(--mono);font-size:12px;cursor:pointer;outline:none;
+  transition:border-color .15s;
+}
+select:focus,button.btn:hover{border-color:var(--accent);}
+button.btn{display:flex;align-items:center;gap:6px;}
+button.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+button.btn-danger {background:var(--red);  border-color:var(--red); color:#fff;}
+
+/* ALERT CARD */
+.alert-card{
+  border:1px solid var(--red);background:rgba(244,63,94,.05);
+  border-radius:8px;padding:14px 18px;margin-bottom:14px;
+}
+.alert-card.ok{border-color:var(--green);background:rgba(34,211,165,.05);}
+.alert-title{font-family:var(--mono);font-size:12px;color:var(--red);font-weight:600;}
+.alert-card.ok .alert-title{color:var(--green);}
+
+/* DRIFT METER */
+.drift-bar-wrap{margin-top:6px;}
+.drift-label{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:4px;}
+.drift-bar-bg{background:var(--border);border-radius:4px;height:6px;overflow:hidden;}
+.drift-bar-fill{height:100%;border-radius:4px;transition:width .3s;}
+
+/* MONO TEXT */
+.mono{font-family:var(--mono);}
+.text-green{color:var(--green);}
+.text-red  {color:var(--red);}
+.text-yellow{color:var(--yellow);}
+.text-muted{color:var(--muted);}
+.text-blue {color:var(--accent);}
+
+/* LOADING */
+.loading{display:flex;align-items:center;justify-content:center;height:200px;color:var(--muted);font-family:var(--mono);font-size:12px;gap:8px;}
+.spin{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+footer{text-align:center;padding:20px;font-family:var(--mono);font-size:11px;color:var(--muted);border-top:1px solid var(--border);margin-top:8px;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-badge">SB</div>
+    <div>
+      <div class="logo-name">SHOPBR v2 · MLOPS</div>
+      <div class="logo-sub">Demand Forecasting Platform</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="pill-status"><span class="dot"></span><span id="modelo-version">carregando...</span></span>
+  </div>
+</header>
+
+<!-- TABS -->
+<div class="tabs-bar">
+  <div class="tab active" data-tab="forecast">Previsões</div>
+  <div class="tab" data-tab="monitoring">Monitoramento</div>
+  <div class="tab" data-tab="registry">Model Registry</div>
+  <div class="tab" data-tab="skus">SKUs</div>
+</div>
+
+<main>
+
+<!-- ═══════════════ TAB: FORECAST ═══════════════ -->
+<div class="tab-content active" id="tab-forecast">
+
+  <div class="kpi-grid" id="kpi-grid">
+    <div class="kpi" style="--kc:var(--accent)"><div class="kpi-label">MAE</div><div class="kpi-val" id="kpi-mae">—</div><div class="kpi-unit">unidades</div></div>
+    <div class="kpi" style="--kc:var(--green)"><div class="kpi-label">MAPE</div><div class="kpi-val" id="kpi-mape">—</div><div class="kpi-unit">%</div></div>
+    <div class="kpi" style="--kc:var(--purple)"><div class="kpi-label">R²</div><div class="kpi-val" id="kpi-r2">—</div><div class="kpi-unit">score</div></div>
+    <div class="kpi" style="--kc:var(--cyan)"><div class="kpi-label">Vendas Reais (teste)</div><div class="kpi-val" id="kpi-real">—</div><div class="kpi-unit">unidades</div></div>
+    <div class="kpi" style="--kc:var(--red)"><div class="kpi-label">Previsto (teste)</div><div class="kpi-val" id="kpi-pred">—</div><div class="kpi-unit">unidades</div></div>
+    <div class="kpi" style="--kc:var(--yellow)"><div class="kpi-label">SKUs monitorados</div><div class="kpi-val" id="kpi-skus">—</div><div class="kpi-unit">produtos</div></div>
+  </div>
+
+  <div class="filter-bar">
+    <label>Categoria</label>
+    <select id="sel-cat"></select>
+    <label>Agrupamento</label>
+    <select id="sel-agrup">
+      <option value="semana">Semanal</option>
+      <option value="mes">Mensal</option>
+    </select>
+    <div style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted);">
+      Modelo: <span class="text-blue" id="badge-modelo">—</span>
+    </div>
+  </div>
+
+  <div class="grid-2-1">
+    <div class="card">
+      <div class="card-title"><span>Real vs Previsto · Intervalo 95%</span><span class="mono" style="font-size:11px">período de teste</span></div>
+      <div class="legend">
+        <div class="leg-item"><div class="leg-dot" style="background:var(--cyan)"></div>Real</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>Previsto</div>
+        <div class="leg-item"><div class="leg-dot" style="background:rgba(59,130,246,.3);width:20px"></div>IC 95%</div>
+      </div>
+      <div class="chart-h"><canvas id="chart-serie"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>Por Categoria · Teste</span></div>
+      <div class="chart-h"><canvas id="chart-cat"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title"><span>Histórico · 2022–2024</span></div>
+      <div class="legend">
+        <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>Unidades</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--purple)"></div>Receita (R$ mil)</div>
+      </div>
+      <div class="chart-h-sm"><canvas id="chart-hist"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>Feature Importance</span></div>
+      <div class="chart-h-sm"><canvas id="chart-feat"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>Distribuição dos Resíduos</span><span id="residuos-stats" class="mono" style="font-size:10px;color:var(--muted)"></span></div>
+      <div class="chart-h-sm"><canvas id="chart-res"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Tabela por categoria -->
+  <div class="card">
+    <div class="card-title"><span>Resumo por Categoria · Período de Teste</span></div>
+    <table><thead><tr>
+      <th>Categoria</th><th>Vendas Reais</th><th>Previsto</th><th>Erro (%)</th><th>Receita Real</th>
+    </tr></thead>
+    <tbody id="tbody-cat"></tbody></table>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB: MONITORING ═══════════════ -->
+<div class="tab-content" id="tab-monitoring">
+
+  <div id="alert-container" style="margin-bottom:16px"></div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span>Health Check · Modelo de Categoria</span></div>
+      <div id="health-cat" class="loading"><div class="spin"></div> verificando...</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>Health Check · Modelo de SKU</span></div>
+      <div id="health-sku" class="loading"><div class="spin"></div> verificando...</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span>Log de Drift</span><button class="btn" onclick="loadDriftLog()">↻ Atualizar</button></div>
+      <div style="overflow-x:auto">
+        <table><thead><tr>
+          <th>Data</th><th>Feature</th><th>Métrica</th><th>Valor</th><th>Threshold</th><th>Status</th>
+        </tr></thead>
+        <tbody id="tbody-drift"></tbody></table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>Log de Retreinamento</span>
+        <button class="btn btn-primary" onclick="dispararRetreino()">▶ Retreinar Agora</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table><thead><tr>
+          <th>Data</th><th>Trigger</th><th>Status</th><th>MAPE Ant.</th><th>MAPE Novo</th><th>Melhoria</th>
+        </tr></thead>
+        <tbody id="tbody-retrain"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB: MODEL REGISTRY ═══════════════ -->
+<div class="tab-content" id="tab-registry">
+
+  <div class="filter-bar">
+    <button class="btn btn-danger" onclick="dispararRollback()">↩ Rollback para versão anterior</button>
+    <div style="margin-left:auto;font-size:12px;color:var(--muted)">
+      Staging → aprovação → Produção → Archived
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>Histórico de Versões</span></div>
+    <div style="overflow-x:auto">
+      <table><thead><tr>
+        <th>Versão</th><th>Tipo</th><th>Nível</th><th>Status</th>
+        <th>MAPE</th><th>R²</th><th>Treinado em</th><th>Promovido em</th>
+      </tr></thead>
+      <tbody id="tbody-modelos"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB: SKUs ═══════════════ -->
+<div class="tab-content" id="tab-skus">
+
+  <div class="filter-bar">
+    <label>Categoria</label>
+    <select id="sel-cat-sku"></select>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>Ranking de SKUs por Receita</span></div>
+    <div style="overflow-x:auto">
+      <table><thead><tr>
+        <th>SKU</th><th>Produto</th><th>Categoria</th><th>Unidades</th>
+        <th>Receita Total</th><th>% Promoção</th><th>Índice Concorrência</th>
+      </tr></thead>
+      <tbody id="tbody-sku"></tbody></table>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<footer>
+  ShopBR Marketplace v2 · MLOps Platform · 2024 &nbsp;|&nbsp;
+  Stack: Python · Scikit-learn · Flask · SQLite · Chart.js &nbsp;|&nbsp;
+  Drift Monitoring · Model Registry · Auto-Retraining
+</footer>
+
+<script>
+// ── Utils ─────────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id)
+const fmtN = n => n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'k' : String(Math.round(n))
+const fmtBRL = n => 'R$ ' + n.toLocaleString('pt-BR')
+
+const CHART_BASE = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{
+    legend:{display:false},
+    tooltip:{
+      backgroundColor:'#0c1018',borderColor:'#1a2235',borderWidth:1,
+      titleColor:'#e2e8f0',bodyColor:'#4b6080',
+      titleFont:{family:'JetBrains Mono',size:10},
+      bodyFont:{family:'Inter',size:12},
+    }
+  },
+  scales:{
+    x:{ticks:{color:'#4b6080',font:{family:'JetBrains Mono',size:9},maxRotation:45},grid:{color:'#1a2235'}},
+    y:{ticks:{color:'#4b6080',font:{family:'JetBrains Mono',size:9}},grid:{color:'#1a2235'}},
+  }
+}
+
+async function api(url){ const r = await fetch(url); const j = await r.json(); return j.data; }
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'))
+    tab.classList.add('active')
+    $('tab-' + tab.dataset.tab).classList.add('active')
+    if(tab.dataset.tab === 'monitoring') loadMonitoring()
+    if(tab.dataset.tab === 'registry')   loadRegistry()
+    if(tab.dataset.tab === 'skus')       loadSkus()
+  })
+})
+
+// ── OVERVIEW ─────────────────────────────────────────────────────────────────
+async function loadOverview(){
+  const d = await api('/api/overview')
+  const m = d.modelo
+
+  if(m){
+    $('kpi-mae').textContent  = m.mae
+    $('kpi-mape').textContent = m.mape + '%'
+    $('kpi-r2').textContent   = m.r2
+    $('modelo-version').textContent = m.version
+    $('badge-modelo').textContent   = m.modelo_tipo
+  }
+  $('kpi-real').textContent  = fmtN(d.previsoes.total_real)
+  $('kpi-pred').textContent  = fmtN(d.previsoes.total_pred)
+  $('kpi-skus').textContent  = d.vendas.n_skus
+
+  // Populate category filters
+  const cats = await api('/api/categorias')
+  ;['sel-cat','sel-cat-sku'].forEach(id => {
+    const sel = $(id); if(!sel) return
+    sel.innerHTML = '<option value="Todas">Todas</option>'
+    cats.forEach(c => { const o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o) })
+  })
+}
+
+// ── SÉRIE TEMPORAL ────────────────────────────────────────────────────────────
+let chartSerie = null
+async function loadSerie(){
+  const cat   = $('sel-cat').value
+  const agrup = $('sel-agrup').value
+  const d = await api(`/api/serie_temporal?categoria=${encodeURIComponent(cat)}&agrupamento=${agrup}`)
+
+  const ctx = $('chart-serie').getContext('2d')
+  if(chartSerie) chartSerie.destroy()
+
+  chartSerie = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels: d.labels,
+      datasets:[
+        {
+          label:'IC 95%',
+          data: d.upper_95,
+          borderColor:'transparent',
+          backgroundColor:'rgba(59,130,246,0.12)',
+          fill:'+1', pointRadius:0, tension:0.3,
+        },
+        {
+          label:'Lower',
+          data: d.lower_95,
+          borderColor:'transparent',
+          backgroundColor:'rgba(59,130,246,0.12)',
+          fill:false, pointRadius:0, tension:0.3,
+        },
+        {
+          label:'Real',
+          data: d.real,
+          borderColor:'#22d3ee', backgroundColor:'rgba(34,211,238,.06)',
+          borderWidth:2, pointRadius:0, tension:0.3, fill:false,
+        },
+        {
+          label:'Previsto',
+          data: d.pred,
+          borderColor:'#f43f5e', backgroundColor:'transparent',
+          borderWidth:2, borderDash:[4,3], pointRadius:0, tension:0.3, fill:false,
+        },
+      ]
+    },
+    options:{...CHART_BASE}
+  })
+}
+
+// ── POR CATEGORIA ─────────────────────────────────────────────────────────────
+async function loadCategoria(){
+  const d = await api('/api/por_categoria')
+  if(!d.length) return
+  const ctx = $('chart-cat').getContext('2d')
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:d.map(r=>r.categoria),
+      datasets:[
+        {label:'Real',    data:d.map(r=>r.real), backgroundColor:'rgba(34,211,238,.5)',borderColor:'#22d3ee',borderWidth:1,borderRadius:3},
+        {label:'Previsto',data:d.map(r=>r.pred), backgroundColor:'rgba(244,63,94,.4)', borderColor:'#f43f5e',borderWidth:1,borderRadius:3},
+      ]
+    },
+    options:{...CHART_BASE, plugins:{...CHART_BASE.plugins, legend:{display:true,labels:{color:'#4b6080',font:{family:'JetBrains Mono',size:10}}}}}
+  })
+}
+
+// ── HISTÓRICO ─────────────────────────────────────────────────────────────────
+async function loadHistorico(){
+  const cat = $('sel-cat').value
+  const d = await api(`/api/historico?categoria=${encodeURIComponent(cat)}`)
+  const ctx = $('chart-hist').getContext('2d')
+  new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:d.labels,
+      datasets:[
+        {label:'Unidades',   data:d.unidades,  borderColor:'#22d3a5',backgroundColor:'rgba(34,211,165,.05)',borderWidth:1.5,pointRadius:0,tension:.4,fill:true,yAxisID:'y'},
+        {label:'Receita k',  data:d.receita_k, borderColor:'rgba(167,139,250,.7)',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.4,yAxisID:'y2'},
+      ]
+    },
+    options:{...CHART_BASE,scales:{
+      x:CHART_BASE.scales.x,
+      y:{...CHART_BASE.scales.y,position:'left'},
+      y2:{...CHART_BASE.scales.y,position:'right',grid:{display:false}},
+    }}
+  })
+}
+
+// ── FEATURE IMPORTANCE ────────────────────────────────────────────────────────
+async function loadFeatImp(){
+  const d = await api('/api/feature_importance')
+  if(!d.length) return
+  const ctx = $('chart-feat').getContext('2d')
+  const cols = d.map((_,i)=>`hsla(${200-i*10},85%,60%,.8)`)
+  new Chart(ctx,{
+    type:'bar',
+    data:{labels:d.map(r=>r.feature),datasets:[{data:d.map(r=>r.importance),backgroundColor:cols,borderWidth:0,borderRadius:2}]},
+    options:{...CHART_BASE,indexAxis:'y',
+      scales:{
+        x:{...CHART_BASE.scales.x,ticks:{...CHART_BASE.scales.x.ticks,callback:v=>v+'%'}},
+        y:{...CHART_BASE.scales.y,ticks:{color:'#4b6080',font:{family:'Inter',size:11}}},
+      }}
+  })
+}
+
+// ── RESÍDUOS ──────────────────────────────────────────────────────────────────
+async function loadResiduos(){
+  const d = await api('/api/residuos')
+  const ctx = $('chart-res').getContext('2d')
+  const cols = d.bins.map(b => b < 0 ? 'rgba(244,63,94,.6)' : 'rgba(34,211,238,.6)')
+  new Chart(ctx,{
+    type:'bar',
+    data:{labels:d.bins.map(b=>b.toFixed(0)),datasets:[{data:d.counts,backgroundColor:cols,borderWidth:0,borderRadius:1}]},
+    options:CHART_BASE
+  })
+  $('residuos-stats').textContent = `μ=${d.mean} σ=${d.std}`
+}
+
+// ── TABELA CATEGORIAS ─────────────────────────────────────────────────────────
+async function loadTabelaCat(){
+  const d = await api('/api/por_categoria')
+  const tbody = $('tbody-cat')
+  tbody.innerHTML = ''
+  d.forEach(r => {
+    const e  = r.erro_pct
+    const ec = e > 5 ? 'badge-red' : e < -5 ? 'badge-green' : 'badge-yellow'
+    tbody.innerHTML += `<tr>
+      <td><strong>${r.categoria}</strong></td>
+      <td class="mono">${r.real.toLocaleString('pt-BR')}</td>
+      <td class="mono">${r.pred.toLocaleString('pt-BR')}</td>
+      <td><span class="badge ${ec}">${e > 0 ? '+' : ''}${e}%</span></td>
+      <td class="mono text-muted">${fmtBRL(r.receita)}</td>
+    </tr>`
+  })
+}
+
+// ── MONITORING ────────────────────────────────────────────────────────────────
+async function loadMonitoring(){
+  loadDriftLog()
+  loadRetrainLog()
+  const saude = await api('/api/monitoring/saude')
+
+  ;['categoria','sku'].forEach(nivel => {
+    const el = $(`health-${nivel.includes('cat') ? 'cat' : 'sku'}`)
+    if(!el) return
+    const info = saude[nivel]
+    if(!info || info.status === 'sem_modelo'){
+      el.innerHTML = '<p class="text-muted mono" style="font-size:12px">Nenhum modelo em produção</p>'
+      return
+    }
+
+    const alertCls = info.requer_retreino ? '' : 'ok'
+    const icon     = info.requer_retreino ? '🚨' : '✅'
+
+    el.innerHTML = `
+      <div class="alert-card ${alertCls}" style="margin-bottom:12px">
+        <div class="alert-title">${icon} ${info.requer_retreino ? 'Retreinamento recomendado' : 'Modelo estável'}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">${info.motivo}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">
+        <div><span class="text-muted">Versão:</span><br><span class="mono text-blue">${info.version || '—'}</span></div>
+        <div><span class="text-muted">MAPE treino:</span><br><span class="mono text-green">${info.mape_treino || '—'}%</span></div>
+        <div><span class="text-muted">MAPE rolling:</span><br><span class="mono ${info.rolling_mape > 30 ? 'text-red':'text-green'}">${info.rolling_mape || '—'}%</span></div>
+        <div><span class="text-muted">Features em drift:</span><br><span class="mono ${info.alertas_features > 0 ? 'text-red':'text-green'}">${info.alertas_features}</span></div>
+      </div>
+      ${info.features_drift.length ? `
+        <div style="margin-top:12px;font-size:11px;color:var(--muted)">Top features com drift (PSI):</div>
+        ${info.features_drift.slice(0,3).map(f=>`
+          <div class="drift-bar-wrap">
+            <div class="drift-label"><span>${f.feature}</span><span class="text-red">${f.psi}</span></div>
+            <div class="drift-bar-bg"><div class="drift-bar-fill" style="width:${Math.min(f.psi/0.5*100,100)}%;background:var(--red)"></div></div>
+          </div>
+        `).join('')}
+      ` : ''}
+    `
+  })
+}
+
+async function loadDriftLog(){
+  const d = await api('/api/monitoring/drift_log')
+  const tbody = $('tbody-drift')
+  tbody.innerHTML = ''
+  d.slice(0,15).forEach(r => {
+    const cls = r.alerta ? 'text-red' : 'text-green'
+    tbody.innerHTML += `<tr>
+      <td class="mono text-muted" style="font-size:11px">${r.data_check}</td>
+      <td>${r.feature}</td>
+      <td class="mono">${r.metrica}</td>
+      <td class="mono ${cls}">${r.valor}</td>
+      <td class="mono text-muted">${r.threshold}</td>
+      <td><span class="badge ${r.alerta ? 'badge-red':'badge-green'}">${r.alerta ? 'ALERTA' : 'OK'}</span></td>
+    </tr>`
+  })
+}
+
+async function loadRetrainLog(){
+  const d = await api('/api/monitoring/retraining_log')
+  const tbody = $('tbody-retrain')
+  tbody.innerHTML = ''
+  d.forEach(r => {
+    const cls  = r.status === 'success' ? 'badge-green' : 'badge-red'
+    const melh = r.melhoria_pct ? `<span class="${r.melhoria_pct > 0 ? 'text-green' : 'text-red'}">${r.melhoria_pct > 0 ? '+' : ''}${r.melhoria_pct}%</span>` : '—'
+    tbody.innerHTML += `<tr>
+      <td class="mono text-muted" style="font-size:11px">${r.executado_em}</td>
+      <td><span class="badge badge-blue">${r.trigger}</span></td>
+      <td><span class="badge ${cls}">${r.status}</span></td>
+      <td class="mono">${r.mape_anterior || '—'}</td>
+      <td class="mono">${r.mape_novo || '—'}</td>
+      <td class="mono">${melh}</td>
+    </tr>`
+  })
+}
+
+// ── REGISTRY ──────────────────────────────────────────────────────────────────
+async function loadRegistry(){
+  const d = await api('/api/modelos')
+  const tbody = $('tbody-modelos')
+  tbody.innerHTML = ''
+  d.forEach(r => {
+    const sc = r.status === 'production' ? 'badge-green' : r.status === 'staging' ? 'badge-yellow' : 'badge-purple'
+    tbody.innerHTML += `<tr>
+      <td class="mono" style="font-size:11px">${r.version}</td>
+      <td>${r.modelo_tipo}</td>
+      <td><span class="badge badge-blue">${r.nivel}</span></td>
+      <td><span class="badge ${sc}">${r.status}</span></td>
+      <td class="mono ${r.status==='production'?'text-green':''}">${r.mape ? r.mape+'%' : '—'}</td>
+      <td class="mono">${r.r2 || '—'}</td>
+      <td class="mono text-muted" style="font-size:11px">${r.treinado_em || '—'}</td>
+      <td class="mono text-muted" style="font-size:11px">${r.promovido_em || '—'}</td>
+    </tr>`
+  })
+}
+
+// ── SKUs ──────────────────────────────────────────────────────────────────────
+async function loadSkus(){
+  const cat   = $('sel-cat-sku')?.value || 'Todas'
+  const d     = await api(`/api/sku/ranking?categoria=${encodeURIComponent(cat)}`)
+  const tbody = $('tbody-sku')
+  tbody.innerHTML = ''
+  d.forEach((r,i) => {
+    const icc = r.indice_concorr_medio
+    const iccCls = icc < 0.95 ? 'text-red' : icc > 1.05 ? 'text-green' : ''
+    tbody.innerHTML += `<tr>
+      <td class="mono text-blue">${r.sku}</td>
+      <td>${r.nome}</td>
+      <td>${r.categoria}</td>
+      <td class="mono">${r.total_unidades.toLocaleString('pt-BR')}</td>
+      <td class="mono">${fmtBRL(r.total_receita)}</td>
+      <td class="mono">${r.pct_promocao}%</td>
+      <td class="mono ${iccCls}">${icc}</td>
+    </tr>`
+  })
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────────────────────
+async function dispararRetreino(){
+  if(!confirm('Iniciar retreinamento manual agora?')) return
+  const r = await fetch('/api/retrain', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nivel:'categoria',forcar:true})})
+  const j = await r.json()
+  alert(j.data?.message || 'Iniciado!')
+  setTimeout(loadMonitoring, 5000)
+}
+
+async function dispararRollback(){
+  if(!confirm('Reverter para a versão anterior do modelo?')) return
+  const r = await fetch('/api/modelos/rollback', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nivel:'categoria'})})
+  const j = await r.json()
+  alert(j.data?.message || j.message)
+  loadRegistry()
+}
+
+// ── LISTENERS ────────────────────────────────────────────────────────────────
+document.addEventListener('change', e => {
+  if(e.target.id === 'sel-cat')     { loadSerie(); loadHistorico(); }
+  if(e.target.id === 'sel-agrup')   { loadSerie(); }
+  if(e.target.id === 'sel-cat-sku') { loadSkus(); }
+})
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+;(async()=>{
+  await loadOverview()
+  await Promise.all([loadSerie(), loadCategoria(), loadHistorico(), loadFeatImp(), loadResiduos(), loadTabelaCat()])
+})()
+</script>
+</body>
+</html>
